@@ -1,0 +1,36 @@
+SELECT DISTINCT
+    TASKNUMBER,
+    OUTCOME,
+    TO_CHAR(UPDATEDDATE, 'hh24:mi') || ' - ' || TO_CHAR(UPDATEDDATE, 'dd.mm.yyyy') AS Update_date,
+    UPDATEDBY,
+    STAGE,
+    PARTICIPANTNAME,
+    UPDATEDBYDISPLAYNAME,
+    TITLE
+FROM
+    fa_fusion_soainfra.wftaskhistory
+WHERE 1=1
+    AND TITLE LIKE '%142029%' /* Поиск номера по title таска*/
+    AND UPDATEDBY NOT LIKE '%workflowsystem%'
+    AND OUTCOME IS NOT NULL
+    AND TASKNUMBER > ( /*Здесь сравниваем номер таска последней отправки и номер тасков утверждения.
+                        Если номера тасков утверждения > номера таска последней отправки значит утверждение оносится к последней отправке */
+        SELECT DISTINCT
+            MAX(ffsw.TASKNUMBER)
+        FROM
+            fa_fusion_soainfra.wftaskhistory ffsw
+        WHERE 1=1
+            AND ffsw.TASKID IN (
+                SELECT
+                    OKAH.TASK_ID
+                FROM
+                    OKC_K_APPROVAL_HISTORY OKAH
+                WHERE 1=1
+                    AND OKAH.ID = (
+                        SELECT OKHAB.ID
+                        FROM OKC_K_HEADERS_ALL_B OKHAB
+                        WHERE CONTRACT_NUMBER LIKE '142029' /* Номер контракта*/
+                    )
+            )
+    )
+ORDER BY TASKNUMBER DESC
